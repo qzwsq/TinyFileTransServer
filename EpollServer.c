@@ -26,14 +26,14 @@ typedef void (*work_func)(void *);
 typedef void* (*worker_func)(void *);
 
 struct thread_pool{
-    work_t *first;
+    work_t *first;                 //use linkedlist to save work
     work_t *last;
-    pthread_mutex_t  work_mutex;
-    pthread_cond_t   work_cond;
-    pthread_cond_t   working_cond;
-    size_t           working_cnt;
+    pthread_mutex_t  work_mutex;   //mutex signal in accept work
+    pthread_cond_t   work_cond;    //work_queue resource
+    pthread_cond_t   working_cond; //working threads resource
+    size_t           working_cnt;  //working threads count
     size_t           thread_cnt;
-    bool             stop;
+    bool             stop;         //flag decide whether to stop the thread pool
 };
 
 struct work{
@@ -45,7 +45,7 @@ struct work{
 
 typedef struct{
     int fd;
-    char filename[MAX_LINE];
+    char filename[MAX_LINE];   //filename: relative path of the file to be trans
 }Params;
 
 tpool_t *tpool_create(worker_func work);
@@ -97,6 +97,7 @@ bool tpool_add_work(tpool_t *tp, work_func func, void *arg){
         return True;
     }
 }
+
 void* worker(void *arg){
     printf("Thread %ld create\n", pthread_self());
     tpool_t *tp = arg;
@@ -166,6 +167,7 @@ tpool_t *tpool_create(worker_func work){
     }
     return tp;
 }
+
 void tpool_destory(tpool_t *tp){
     printf("Begin to destory thread pool\n");
     work_t *work;
@@ -218,6 +220,12 @@ void file_transfer(void* params){
             break;
         }
     }
+    /*
+     *Use sleep to test tpoll_wait() function
+     *When server process rececive a SIGINT signal and file transfer 
+     *has not been completed, server will not exit immediately.
+     *	*/
+    //sleep(10);
     close(p->fd);
     fclose(fp);
 }
@@ -257,6 +265,8 @@ int main(int argc, char** argv){
     epoll_ctl(epfd, EPOLL_CTL_ADD, listenfd, &ev);
     tp = tpool_create(worker);
     printf("Server begin to listen %d port\n", atoi(argv[1]));
+
+    // capture SIGINT signal
     if(sigaction(SIGINT, &action, NULL)<0){
         perror("Signal bind failed.\n");
         exit(1);

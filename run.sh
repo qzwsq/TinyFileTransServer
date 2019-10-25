@@ -11,3 +11,4 @@ make > /dev/null
 ./Client.out 10011 <<< $FILENAME >>client.log
 kill -2 $(ps aux | grep '[S]erver.out' | awk '{print $2}')
 #make clean
+
